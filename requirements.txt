@@ -1,0 +1,4 @@
+web3~=5.29.0
+requests~=2.27.1
+python-dotenv~=0.20.0
+websockets~=9.1
