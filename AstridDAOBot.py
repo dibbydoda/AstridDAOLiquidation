@@ -10,8 +10,6 @@ import threading
 import time
 import asyncio
 import json
-import requests
-from websockets import connect
 
 
 load_dotenv()
@@ -147,10 +145,11 @@ def main():
     oracle_feed = w3connection.eth.contract(address=DIA_ORACLE_ADDRESS, abi=DaiOracleABI)
     block_filter = w3connection.eth.filter('pending')
 
-    #while True:
-     #   for event: web3. in block_filter.get_new_entries():
-      #      if transaction
-       # time.sleep(poll_interval)
+    while True:
+        for transaction in block_filter.get_new_entries():
+            print(transaction)
+        time.sleep(0.1)
+
 
 if __name__ == "__main__":
     main()
