@@ -144,7 +144,7 @@ def main():
     sorted_vaults = w3connection.eth.contract(address=SORTED_VAULTS_ADDRESS, abi=SortedVaultsABI)
     price_feed = w3connection.eth.contract(address=PRICE_FEED_ADDRESS, abi=PriceFeedABI)
     oracle_feed = w3connection.eth.contract(address=DIA_ORACLE_ADDRESS, abi=DaiOracleABI)
-    block_filter = w3connection.eth.filter("pending")
+    block_filter = w3connection.eth.filter({'fromBlock': 'latest', 'toBlock': 'pending'})
 
     while True:
         for transaction in block_filter.get_new_entries():
