@@ -15,7 +15,7 @@ import json
 load_dotenv()
 
 KEY = os.getenv("KEY")
-RPC_URL_MAINNET = "https://astar.api.onfinality.io/rpc?apikey=e1452126-1bc9-409a-b663-a7ae8e150c8b"
+RPC_URL_MAINNET = "ws://localhost:8546"
 RPC_URL_TESTNET = "https://rpc.shibuya.astar.network:8545"
 VAULT_MANAGER_ADDRESS = "0x0cF3E16948418649498b59c336ba38678842E2d4"
 SORTED_VAULTS_ADDRESS = "0x2Be04114c9F02981Ee92AcC0d4B4ec48A2CC68cF"
@@ -24,8 +24,9 @@ DIA_ORACLE_ADDRESS = "0xd79357ebb0cd724e391f2b49a8De0E31688fEc75"
 
 sent_transactions = []
 
+
 def initialise_connection(rpc):
-    w3 = Web3(Web3.HTTPProvider(rpc))
+    w3 = Web3(Web3.WebsocketProvider(rpc))
     account: LocalAccount = Account.from_key(KEY)
     w3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
     w3.eth.defaultAccount = account.address
