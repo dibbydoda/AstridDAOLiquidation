@@ -15,8 +15,8 @@ import json
 load_dotenv()
 
 KEY = os.getenv("KEY")
-RPC_URL_MAINNET = "ws://localhost:8546"
-RPC_URL_TESTNET = "https://rpc.shibuya.astar.network:8545"
+RPC_URL_WS = "ws://localhost:8546"
+RPC_URL_HTTP = "https//localhost:9933"
 VAULT_MANAGER_ADDRESS = "0x0cF3E16948418649498b59c336ba38678842E2d4"
 SORTED_VAULTS_ADDRESS = "0x2Be04114c9F02981Ee92AcC0d4B4ec48A2CC68cF"
 PRICE_FEED_ADDRESS = "0xb2c9eb6B5835d3DC1d9428673ECF957D8b008Bf9"
@@ -139,7 +139,7 @@ async def get_event():
 
 
 def main():
-    w3connection, account = initialise_connection(RPC_URL_MAINNET)
+    w3connection, account = initialise_connection(RPC_URL_HTTP)
     vault_manager = w3connection.eth.contract(address=VAULT_MANAGER_ADDRESS, abi=EventManagerABI)
     sorted_vaults = w3connection.eth.contract(address=SORTED_VAULTS_ADDRESS, abi=SortedVaultsABI)
     price_feed = w3connection.eth.contract(address=PRICE_FEED_ADDRESS, abi=PriceFeedABI)
