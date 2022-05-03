@@ -139,7 +139,7 @@ async def get_event():
 
 
 def main():
-    w3connection, account = initialise_connection(RPC_URL_HTTP)
+    w3connection, account = initialise_connection(RPC_URL_WS)
     vault_manager = w3connection.eth.contract(address=VAULT_MANAGER_ADDRESS, abi=EventManagerABI)
     sorted_vaults = w3connection.eth.contract(address=SORTED_VAULTS_ADDRESS, abi=SortedVaultsABI)
     price_feed = w3connection.eth.contract(address=PRICE_FEED_ADDRESS, abi=PriceFeedABI)
