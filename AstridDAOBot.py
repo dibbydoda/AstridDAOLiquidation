@@ -146,9 +146,10 @@ def main():
     oracle_feed = w3connection.eth.contract(address=DIA_ORACLE_ADDRESS, abi=DaiOracleABI)
     block_filter = w3connection.eth.filter({'fromBlock': 'latest', 'toBlock': 'pending'})
 
-    for transaction in block_filter.get_new_entries():
-        print(transaction)
-        break
+    while True:
+        for transaction in block_filter.get_new_entries():
+            print(transaction)
+            return
 
 
 if __name__ == "__main__":
