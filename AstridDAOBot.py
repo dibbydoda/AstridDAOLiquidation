@@ -26,7 +26,7 @@ sent_transactions = []
 
 
 def initialise_connection(rpc):
-    w3 = Web3(Web3.WebsocketProvider(rpc))
+    w3 = Web3(Web3.HTTPProvider(rpc))
     account: LocalAccount = Account.from_key(KEY)
     w3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
     w3.eth.defaultAccount = account.address
