@@ -147,9 +147,7 @@ def main():
     block_filter = w3connection.eth.filter('latest')
 
     while True:
-        for item in block_filter.get_new_entries():
-            print(item)
-            return
+        print(block_filter.get_new_entries())
 
 
 if __name__ == "__main__":
