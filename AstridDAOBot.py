@@ -148,7 +148,7 @@ def main():
 
     while True:
         for item in block_filter.get_new_entries():
-            print(transaction)
+            print(item)
             return
 
 
