@@ -16,7 +16,7 @@ load_dotenv()
 
 KEY = os.getenv("KEY")
 RPC_URL_WS = "ws://localhost:8546"
-RPC_URL_HTTP = "http://localhost:9933"
+RPC_URL_HTTP = "http://localhost:8545"
 VAULT_MANAGER_ADDRESS = "0x0cF3E16948418649498b59c336ba38678842E2d4"
 SORTED_VAULTS_ADDRESS = "0x2Be04114c9F02981Ee92AcC0d4B4ec48A2CC68cF"
 PRICE_FEED_ADDRESS = "0xb2c9eb6B5835d3DC1d9428673ECF957D8b008Bf9"
@@ -139,15 +139,17 @@ async def get_event():
 
 
 def main():
-    w3connection, account = initialise_connection(RPC_URL_WS)
+    w3connection, account = initialise_connection(RPC_URL_HTTP)
     vault_manager = w3connection.eth.contract(address=VAULT_MANAGER_ADDRESS, abi=EventManagerABI)
     sorted_vaults = w3connection.eth.contract(address=SORTED_VAULTS_ADDRESS, abi=SortedVaultsABI)
     price_feed = w3connection.eth.contract(address=PRICE_FEED_ADDRESS, abi=PriceFeedABI)
     oracle_feed = w3connection.eth.contract(address=DIA_ORACLE_ADDRESS, abi=DaiOracleABI)
-    block_filter = w3connection.eth.filter('latest')
+    block_filter = w3connection.eth.filter('pending')
 
     while True:
-        print(block_filter.get_new_entries())
+        for item in block_filter.get_new_entries():
+            print(item)
+            return
 
 
 if __name__ == "__main__":
