@@ -15,6 +15,8 @@ import time
 import asyncio
 import json
 from substrateinterface import SubstrateInterface
+import logging
+from systemdlogging.toolbox import init_systemd_logging
 
 load_dotenv()
 
@@ -27,12 +29,18 @@ DIA_ORACLE_ADDRESS = "0xD7B7dc549A4C3E1113c9Ab92A82A31368082BCAc"
 ORACLE_UPDATER_ADDRESS = '0xB81B557863BA92DdcA68DfE3171C646B0C132de1'
 
 
+init_systemd_logging()
+log = logging.getLogger('AstridDaoBot')
+log.setLevel(logging.INFO)
+log.info("Logging Started")
+
+
 def initialise_connection(rpc):
     w3 = Web3(Web3.WebsocketProvider(rpc))
     account: LocalAccount = Account.from_key(KEY)
     w3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
     w3.eth.defaultAccount = account.address
-    print(f"Connected to ChainID={w3.eth.chain_id} at BlockNumber={w3.eth.block_number}."
+    log.info(f"Connected to ChainID={w3.eth.chain_id} at BlockNumber={w3.eth.block_number}."
           f"\nTransactions will be sent from account {account.address}.")
     return w3, account
 
@@ -47,9 +55,9 @@ def get_vaults_at_risk(vault_manager, sorted_vaults, new_price):
     vaults_at_risk = 0
     riskiest_vault = sorted_vaults.caller.getLast()
     while True:
-        print("Getting Vault")
+        log.info("Getting Vault")
         vault_icr = vault_manager.caller.getCurrentICR(riskiest_vault, new_price)
-        print(vault_icr, mcr)
+        log.info(f"{vault_icr}, {mcr}")
         if vault_icr < mcr:
             riskiest_vault = get_next_vault(sorted_vaults, riskiest_vault)
             vaults_at_risk += 1
@@ -100,8 +108,9 @@ def convert_extrinsic(decoded_extrinsic, desired_receiver):
         transaction_dict['hash'] = keccak(encoded)
         return transaction_dict
     else:
-        print(trans_type)
-        print(args)
+        log.warning("Found NON Legacy Transactions.")
+        log.warning(f"{trans_type}")
+        log.warning(f"{args}")
 
 
 def extrinsic_is_eth_transact(decoded_extrinsic):
@@ -128,12 +137,13 @@ def check_for_price_update(substrate, extrinsic_string, w3contracts):
 
 def execute_order_66(w3connection, substrate, w3contracts):
     pending_transactions = substrate.rpc_request("author_pendingExtrinsics", []).get("result")
+    log.info(f"Received {len(pending_transactions)} transactions.")
     for extrinsic in pending_transactions:
         result = check_for_price_update(substrate, extrinsic, w3contracts)
         if result is not None:
             transaction, new_price = result
             vaults_at_risk = get_vaults_at_risk(w3contracts["vault_manager"], w3contracts["sorted_vaults"], new_price)
-            print(f"On a price update to {new_price}, I found {vaults_at_risk} vaults at risk.")
+            log.info(f"On a price update to {new_price}, I found {vaults_at_risk} vaults at risk.")
             if vaults_at_risk > 0:
                 executor = concurrent.futures.ThreadPoolExecutor()
                 task = executor.submit(wait_for_receipt, transaction['hash'], w3connection)
@@ -154,17 +164,23 @@ def nonce_farm(transactions, connection: Web3):
 
 
 if __name__ == "__main__":
-    w3connection_obj, account = initialise_connection(RPC_URL_WS)
-    substrate_obj = SubstrateInterface(url=RPC_URL_WS)
-    substrate_obj.init_runtime()
+    try:
+        w3connection_obj, account = initialise_connection(RPC_URL_WS)
+        substrate_obj = SubstrateInterface(url=RPC_URL_WS)
+        substrate_obj.init_runtime()
 
-    contracts = {
-        "vault_manager": w3connection_obj.eth.contract(address=VAULT_MANAGER_ADDRESS, abi=EventManagerABI),
-        "sorted_vaults": w3connection_obj.eth.contract(address=SORTED_VAULTS_ADDRESS, abi=SortedVaultsABI),
-        "price_feed": w3connection_obj.eth.contract(address=PRICE_FEED_ADDRESS, abi=PriceFeedABI),
-        "oracle_feed": w3connection_obj.eth.contract(address=DIA_ORACLE_ADDRESS, abi=DaiOracleABI)}
-    while True:
-        execute_order_66(w3connection_obj, substrate_obj, contracts)
+        contracts = {
+            "vault_manager": w3connection_obj.eth.contract(address=VAULT_MANAGER_ADDRESS, abi=EventManagerABI),
+            "sorted_vaults": w3connection_obj.eth.contract(address=SORTED_VAULTS_ADDRESS, abi=SortedVaultsABI),
+            "price_feed": w3connection_obj.eth.contract(address=PRICE_FEED_ADDRESS, abi=PriceFeedABI),
+            "oracle_feed": w3connection_obj.eth.contract(address=DIA_ORACLE_ADDRESS, abi=DaiOracleABI)}
+
+        while True:
+            execute_order_66(w3connection_obj, substrate_obj, contracts)
+
+    except Exception as e:
+        log.exception(e)
+        raise
 
 
 
