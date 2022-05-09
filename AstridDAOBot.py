@@ -133,8 +133,7 @@ def execute_order_66(w3connection, substrate, w3contracts):
         if result is not None:
             transaction, new_price = result
             vaults_at_risk = get_vaults_at_risk(w3contracts["vault_manager"], w3contracts["sorted_vaults"], new_price)
-            print(f"To get vaults at risk took {time.time() - time2} secs")
-
+            print(f"On a price update to {new_price}, I found {vaults_at_risk} vaults at risk.")
             if vaults_at_risk > 0:
                 executor = concurrent.futures.ThreadPoolExecutor()
                 task = executor.submit(wait_for_receipt, transaction['hash'], w3connection)
