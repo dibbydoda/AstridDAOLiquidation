@@ -38,25 +38,24 @@ def initialise_connection(rpc):
 
 
 def get_next_vault(sorted_vaults, current_vault):
-    sorted_vaults.caller.getPrev(current_vault)
+    next_vault = sorted_vaults.caller.getPrev(current_vault)
+    return next_vault
 
 
 def get_vaults_at_risk(vault_manager, sorted_vaults, new_price):
     mcr = vault_manager.caller.MCR()
     vaults_at_risk = 0
     riskiest_vault = sorted_vaults.caller.getLast()
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        while True:
-            next_vault = executor.submit(get_next_vault, sorted_vaults, riskiest_vault)
-            print("Getting Vault")
-            vault_icr = vault_manager.caller.getCurrentICR(riskiest_vault, new_price)
-            print(vault_icr, mcr)
-            if vault_icr < mcr:
-                riskiest_vault = next_vault.result()
-                vaults_at_risk += 1
-                continue
-            else:
-                return vaults_at_risk
+    while True:
+        print("Getting Vault")
+        vault_icr = vault_manager.caller.getCurrentICR(riskiest_vault, new_price)
+        print(vault_icr, mcr)
+        if vault_icr < mcr:
+            riskiest_vault = get_next_vault(sorted_vaults, riskiest_vault)
+            vaults_at_risk += 1
+            continue
+        else:
+            return vaults_at_risk
 
 
 def liquidate_vaults(vault_manager: web3.eth.Contract, number, gas_price):
