@@ -145,7 +145,6 @@ def execute_order_66(w3connection, substrate, w3contracts):
             vaults_at_risk = get_vaults_at_risk(w3contracts["vault_manager"], w3contracts["sorted_vaults"], new_price)
             log.info(f"On a price update to {new_price}, I found {vaults_at_risk} vaults at risk.")
             if vaults_at_risk > 0:
-                executor = concurrent.futures.ThreadPoolExecutor()
                 for i in range(10):
                     liquidate_vaults(w3contracts["vault_manager"], vaults_at_risk, transaction['gasPrice'])
                     try:
