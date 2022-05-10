@@ -1,5 +1,6 @@
 import web3.eth
 from web3 import Web3
+import web3.exceptions
 from eth_account import Account
 from eth_account.signers.local import LocalAccount
 from eth_account._utils.legacy_transactions import encode_transaction, serializable_unsigned_transaction_from_dict
@@ -71,7 +72,6 @@ def liquidate_vaults(vault_manager: web3.eth.Contract, number, gas_price):
                 'maxFeePerGas': gas_price,
                 'maxPriorityFeePerGas': gas_price,
                 'gas': 10000000})
-
 
 
 def is_set_astr_value(oracle_feed: web3.eth.Contract, transaction):
@@ -146,12 +146,15 @@ def execute_order_66(w3connection, substrate, w3contracts):
             log.info(f"On a price update to {new_price}, I found {vaults_at_risk} vaults at risk.")
             if vaults_at_risk > 0:
                 executor = concurrent.futures.ThreadPoolExecutor()
-                task = executor.submit(wait_for_receipt, transaction['hash'], w3connection)
                 for i in range(10):
                     liquidate_vaults(w3contracts["vault_manager"], vaults_at_risk, transaction['gasPrice'])
-                    if task.done():
+                    try:
+                        w3connection.eth.get_transaction(transaction['hash'])
+                    except web3.exceptions.TransactionNotFound:
+                        time.sleep(1)
+                    else:
                         break
-                    time.sleep(3)
+
 
 
 def nonce_farm(transactions, connection: Web3):
