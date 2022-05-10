@@ -37,13 +37,13 @@ log.info("Logging Started")
 
 
 def initialise_connection(rpc):
-    w3 = Web3(Web3.WebsocketProvider(rpc))
-    account: LocalAccount = Account.from_key(KEY)
-    w3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
-    w3.eth.defaultAccount = account.address
+    w3 = Web3(Web3.WebsocketProvider(rpc, websocket_timeout=20, websocket_kwargs={"max_size": 2 ** 22, "max_queue": 2 ** 6}))
+    my_account: LocalAccount = Account.from_key(KEY)
+    w3.middleware_onion.add(construct_sign_and_send_raw_middleware(my_account))
+    w3.eth.defaultAccount = my_account.address
     log.info(f"Connected to ChainID={w3.eth.chain_id} at BlockNumber={w3.eth.block_number}."
-          f"\nTransactions will be sent from account {account.address}.")
-    return w3, account
+          f"\nTransactions will be sent from account {my_account.address}.")
+    return w3, my_account
 
 
 def get_next_vault(sorted_vaults, current_vault):
@@ -176,12 +176,13 @@ if __name__ == "__main__":
             "sorted_vaults": w3connection_obj.eth.contract(address=SORTED_VAULTS_ADDRESS, abi=SortedVaultsABI),
             "price_feed": w3connection_obj.eth.contract(address=PRICE_FEED_ADDRESS, abi=PriceFeedABI),
             "oracle_feed": w3connection_obj.eth.contract(address=DIA_ORACLE_ADDRESS, abi=DaiOracleABI)}
-
-        while True:
-            execute_order_66(w3connection_obj, substrate_obj, contracts)
+        nonce_farm(100, w3connection_obj)
+        #while True:
+        #    execute_order_66(w3connection_obj, substrate_obj, contracts)
 
     except Exception as e:
         log.exception(e)
+        print(e)
         raise
 
 
