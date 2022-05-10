@@ -32,7 +32,7 @@ ORACLE_UPDATER_ADDRESS = '0xB81B557863BA92DdcA68DfE3171C646B0C132de1'
 
 init_systemd_logging()
 log = logging.getLogger('AstridDaoBot')
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 log.info("Logging Started")
 
 
@@ -137,7 +137,7 @@ def check_for_price_update(substrate, extrinsic_string, w3contracts):
 
 def execute_order_66(w3connection, substrate, w3contracts):
     pending_transactions = substrate.rpc_request("author_pendingExtrinsics", []).get("result")
-    eth_block = w3connection.eth.get_block_number
+    eth_block = w3connection.eth.get_block_number()
     log.debug(f"Received {len(pending_transactions)} transactions in block {eth_block} ")
     for extrinsic in pending_transactions:
         result = check_for_price_update(substrate, extrinsic, w3contracts)
