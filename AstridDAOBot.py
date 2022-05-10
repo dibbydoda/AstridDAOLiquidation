@@ -155,7 +155,6 @@ def execute_order_66(w3connection, substrate, w3contracts):
                         break
 
 
-
 def nonce_farm(transactions, connection: Web3):
     for i in range(transactions):
         connection.eth.send_transaction({
@@ -176,9 +175,8 @@ if __name__ == "__main__":
             "sorted_vaults": w3connection_obj.eth.contract(address=SORTED_VAULTS_ADDRESS, abi=SortedVaultsABI),
             "price_feed": w3connection_obj.eth.contract(address=PRICE_FEED_ADDRESS, abi=PriceFeedABI),
             "oracle_feed": w3connection_obj.eth.contract(address=DIA_ORACLE_ADDRESS, abi=DaiOracleABI)}
-        nonce_farm(100, w3connection_obj)
-        #while True:
-        #    execute_order_66(w3connection_obj, substrate_obj, contracts)
+        while True:
+            execute_order_66(w3connection_obj, substrate_obj, contracts)
 
     except Exception as e:
         log.exception(e)
