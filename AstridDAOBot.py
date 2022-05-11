@@ -35,6 +35,8 @@ log = logging.getLogger('AstridDaoBot')
 log.setLevel(logging.DEBUG)
 log.info("Logging Started")
 
+is_nonce_farming = False
+
 
 def initialise_connection(rpc):
     w3 = Web3(Web3.WebsocketProvider(rpc, websocket_timeout=20, websocket_kwargs={"max_size": 2 ** 22, "max_queue": 2 ** 6}))
@@ -136,12 +138,17 @@ def check_for_price_update(substrate, extrinsic_string, w3contracts):
 
 
 def execute_order_66(w3connection, substrate, w3contracts):
+    global last_known_nonce
+    global is_nonce_farming
     pending_transactions = substrate.rpc_request("author_pendingExtrinsics", []).get("result")
     log.debug(f"Received {len(pending_transactions)} transactions.")
     for extrinsic in pending_transactions:
         result = check_for_price_update(substrate, extrinsic, w3contracts)
         if result is not None:
             transaction, new_price = result
+            if transaction['nonce'] >= last_known_nonce and not is_nonce_farming:
+                thread = threading.Thread(target=increase_nonce, args=(transaction['nonce'], last_known_nonce))
+                thread.start()
             vaults_at_risk = get_vaults_at_risk(w3contracts["vault_manager"], w3contracts["sorted_vaults"], new_price)
             log.info(f"On a price update to {new_price}, I found {vaults_at_risk} vaults at risk.")
             if vaults_at_risk > 0:
@@ -155,13 +162,28 @@ def execute_order_66(w3connection, substrate, w3contracts):
                         break
 
 
+def increase_nonce(transaction_nonce, my_nonce):
+    global is_nonce_farming
+    global last_known_nonce
+    is_nonce_farming = True
+    nonce_difference = transaction_nonce - my_nonce
+    nonce_to_farm = nonce_difference + 50
+    nonce_farming_connection, _account = initialise_connection(RPC_URL_WS)
+    new_nonce = nonce_farm(nonce_to_farm, nonce_farming_connection)
+    last_known_nonce = new_nonce
+    is_nonce_farming = False
+
+
 def nonce_farm(transactions, connection: Web3):
     for i in range(transactions):
+        print(f"Nonce farming transaction {i}")
         connection.eth.send_transaction({
             'to': '0x969656b9d58814824a8E329A96672243C7Ce8e76',
-            'maxFeePerGas': Web3.toWei(1, "gwei"),
-            'maxPriorityFeePerGas':  Web3.toWei(1, "gwei"),
+            'maxFeePerGas': Web3.toWei(2, "gwei"),
+            'maxPriorityFeePerGas':  Web3.toWei(2, "gwei"),
             'value': 1})
+    new_nonce = connection.eth.get_transaction_count(account=connection.eth.defaultAccount)
+    return new_nonce
 
 
 if __name__ == "__main__":
@@ -175,6 +197,7 @@ if __name__ == "__main__":
             "sorted_vaults": w3connection_obj.eth.contract(address=SORTED_VAULTS_ADDRESS, abi=SortedVaultsABI),
             "price_feed": w3connection_obj.eth.contract(address=PRICE_FEED_ADDRESS, abi=PriceFeedABI),
             "oracle_feed": w3connection_obj.eth.contract(address=DIA_ORACLE_ADDRESS, abi=DaiOracleABI)}
+        last_known_nonce = w3connection_obj.eth.get_transaction_count(w3connection_obj.eth.defaultAccount)
         while True:
             execute_order_66(w3connection_obj, substrate_obj, contracts)
 
