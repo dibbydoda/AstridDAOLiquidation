@@ -35,8 +35,8 @@ log = logging.getLogger('AstridDaoBot')
 log.setLevel(logging.DEBUG)
 log.info("Logging Started")
 
-
 def initialise_connection(rpc):
+    '''Connect to an RPC provider and return an API object along with the local account for sending transactions.'''
     w3 = Web3(Web3.WebsocketProvider(rpc, websocket_timeout=20, websocket_kwargs={"max_size": 2 ** 22, "max_queue": 2 ** 6}))
     my_account: LocalAccount = Account.from_key(KEY)
     w3.middleware_onion.add(construct_sign_and_send_raw_middleware(my_account))
@@ -52,6 +52,7 @@ def get_next_vault(sorted_vaults, current_vault):
 
 
 def get_vaults_at_risk(vault_manager, sorted_vaults, new_price):
+    '''Get the number of vaults that are at risk in the protocol where ICR < MCR'''
     mcr = vault_manager.caller.MCR()
     vaults_at_risk = 0
     riskiest_vault = sorted_vaults.caller.getLast()
@@ -68,6 +69,7 @@ def get_vaults_at_risk(vault_manager, sorted_vaults, new_price):
 
 
 def liquidate_vaults(vault_manager: web3.eth.Contract, number, gas_price):
+    '''Exectute a transaction that liquidates the given number of vaults at risk. The smart contract will try to liquidate the bottom n riskiest vaults'''
     transaction_hash = vault_manager.functions.liquidateVaults(number).transact({
                 'maxFeePerGas': gas_price,
                 'maxPriorityFeePerGas': gas_price,
@@ -75,6 +77,7 @@ def liquidate_vaults(vault_manager: web3.eth.Contract, number, gas_price):
 
 
 def is_set_astr_value(oracle_feed: web3.eth.Contract, transaction):
+    ''' Determine if a transaction to the oracle is updating the price of ASTR against USD. If so return the parameters of the transaction '''
     input_function, input_parameters = oracle_feed.decode_function_input(transaction['data'])
     if "setValue" in str(input_function) and input_parameters['key'] == 'ASTR/USD':
         return True, input_parameters
@@ -82,6 +85,7 @@ def is_set_astr_value(oracle_feed: web3.eth.Contract, transaction):
 
 
 def convert_extrinsic(decoded_extrinsic, desired_receiver):
+    ''' Convert a substrate extrinsic into an eth transaction. Only return the transaction if it is being sent to a desired_recipient'''
     trans_type, args = list(decoded_extrinsic['call']['call_args'][0]['value'].items())[0]
     if args['action'] == 'Create':
         return
@@ -114,6 +118,7 @@ def convert_extrinsic(decoded_extrinsic, desired_receiver):
 
 
 def extrinsic_is_eth_transact(decoded_extrinsic):
+    ''' Determine if a substrate extrinsic is an eth transact call'''
     call = decoded_extrinsic['call']
     return call["call_module"] == 'Ethereum' and call["call_function"] == "transact"
 
@@ -124,6 +129,7 @@ def wait_for_receipt(txn_hash, connection):
 
 
 def check_for_price_update(substrate, extrinsic_string, w3contracts):
+    ''' Check substrate extrinsice and determine if they are updating the oracle price of ASTR/USD, if so return the new price''' 
     oracle = w3contracts["oracle_feed"]
     extrinsic = substrate.decode_scale(type_string="Extrinsic", scale_bytes=extrinsic_string)
     if extrinsic_is_eth_transact(extrinsic):
@@ -135,7 +141,9 @@ def check_for_price_update(substrate, extrinsic_string, w3contracts):
                 return converted, new_price
 
 
-def execute_order_66(w3connection, substrate, w3contracts):
+def main_logic(w3connection, substrate, w3contracts):
+    ''' Get pending transactions from the ASTR network. If they are eth calls to the oracle that update the price of ASTR/USD, 
+        then determine if any ASTRID DAO vaults will be at risk. If so execute a transaction to liquidate that vault'''
     pending_transactions = substrate.rpc_request("author_pendingExtrinsics", []).get("result")
     log.debug(f"Received {len(pending_transactions)} transactions.")
     for extrinsic in pending_transactions:
@@ -154,16 +162,6 @@ def execute_order_66(w3connection, substrate, w3contracts):
                     else:
                         break
 
-
-def nonce_farm(transactions, connection: Web3):
-    for i in range(transactions):
-        connection.eth.send_transaction({
-            'to': '0x969656b9d58814824a8E329A96672243C7Ce8e76',
-            'maxFeePerGas': Web3.toWei(1, "gwei"),
-            'maxPriorityFeePerGas':  Web3.toWei(1, "gwei"),
-            'value': 1})
-
-
 if __name__ == "__main__":
     try:
         w3connection_obj, account = initialise_connection(RPC_URL_WS)
@@ -176,7 +174,7 @@ if __name__ == "__main__":
             "price_feed": w3connection_obj.eth.contract(address=PRICE_FEED_ADDRESS, abi=PriceFeedABI),
             "oracle_feed": w3connection_obj.eth.contract(address=DIA_ORACLE_ADDRESS, abi=DaiOracleABI)}
         while True:
-            execute_order_66(w3connection_obj, substrate_obj, contracts)
+            execute_order(w3connection_obj, substrate_obj, contracts)
 
     except Exception as e:
         log.exception(e)
